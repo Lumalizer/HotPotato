@@ -65,7 +65,7 @@ void start() {
   timeRemaining = totalTime;
 }
 
-uint8_t Logrithmic(uint8_t num){
+uint8_t Logrithmic(uint8_t num) {
   int output = log(num+1)/log(1000)*255;
   return output;
 }
@@ -95,13 +95,13 @@ void defuse() {
 }
 
 // the less time there is left, the shorter the delay, with upper and lower limits
-int getDelayTime(){
+int getDelayTime() {
   float ratio = (float(timeRemaining) / float(totalTime));
   int delayed = 20 + min(int(ratio*ratio * totalTime / 5), min(totalTime/10, 1500));
   return delayed;
 }
 
-void extendTime(){
+void extendTime() {
   timeRemaining += attemptTimeAddition;
   tone(beeper, 900);
   delay(50);
@@ -109,7 +109,7 @@ void extendTime(){
   noTone(beeper);
 }
 
-void soundTimer(){
+void soundTimer() {
   tone(beeper, 600);
   delay(50);
   timeRemaining -= 50;
