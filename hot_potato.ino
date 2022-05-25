@@ -25,10 +25,9 @@ const int ultrasonicEcho = 10;
 int requiredAttempts = 3; //amount of defusion attempts until the timer successfully stops
 int attemptTimeAddition = 2000; // amount of time added for each defusion attempt (ms)
 int attempts = 0; // current amount of attempts
-int totalTime = 20000; // total available starting time until explosion
-int timeRemaining;
+long totalTime; // total available starting time until explosion
+long timeRemaining;
 int randomTarget;
-//boolean hasTarget = false;
 int previousDistanceMeasurement;
 boolean chosenTarget = false;
 int targetStartTime;
@@ -98,8 +97,6 @@ int getDistance() {
   ultrasonic_duration = pulseIn(ultrasonicEcho, HIGH);
   ultrasonic_distance = ultrasonic_duration * 0.034 / 2;
   return ultrasonic_distance;
-//  Serial.print("Distance: ");
-//  Serial.println(ultrasonic_distance);
 }
 
 
@@ -108,12 +105,15 @@ int getDistance() {
 
 
 
-void beep(int freq, int delay1, int delay2, int repetitions = 1) {
+void beep(int freq, int delay1, int delay2 = 0, int repetitions = 1) {
   for (int i = 0; i < repetitions; i++){
     tone(beeper, freq);
     delay(delay1);
     noTone(beeper);
     delay(delay2);
+    if(timeRemaining > 0) {
+      timeRemaining -= (delay1 + delay2);
+    }
   }
 }
 
@@ -234,38 +234,32 @@ void animateHeart(int repetitions = 1) {
 
 
 
-// ---------------------- Timing functions
+// ---------------------- Timing functions 
 
+void getRandomTotalTime() {
+  timeRemaining = random(60000, 120000);
+  totalTime = timeRemaining;
+  Serial.println(timeRemaining);
+}
 
-
-// the less time there is left, the shorter the delay, with upper and lower limits
+// the less time there is left, the shorter the delay, with upper and lower limits 
 int getDelayTime() {
   float ratio = (float(timeRemaining) / float(totalTime));
-  int delayed = 20 + min(int(ratio*ratio * totalTime / 5), min(totalTime/10, 1500));
+  int delayed;
+  delayed = int(0.05/pow(ratio, -0.5)*timeRemaining);
   return delayed;
 }
 
 void extendTime() {
-  timeRemaining += attemptTimeAddition;
-  tone(beeper, 900);
-  delay(50);
-  timeRemaining -= 50;
-  noTone(beeper);
+  int randomAddedTime = random(2500, 4500);
+  timeRemaining += randomAddedTime;
+  beep(900, 50);
 }
 
+// async timer
 unsigned long startMillis; 
 unsigned long currentMillis;
-const unsigned long period = 1000;
-
 void soundTimer() {
-//  tone(beeper, 600);
-//  delay(50);
-//  timeRemaining -= 50;
-//  noTone(beeper);
-//  int delayed = getDelayTime();
-//  delay(delayed);
-//  timeRemaining -= delayed;
-
     currentMillis = millis();
     int delayed = getDelayTime();
     timeRemaining -= 50;
@@ -286,6 +280,7 @@ void soundTimer() {
 
 void start() {
   lc.setIntensity(0,15);
+  startRotation();
   printByte(numberThree);
   beep(1000, 150, 50);
   delay(800);
@@ -296,7 +291,7 @@ void start() {
   beep(1000, 150, 50);
   delay(800);
   lc.clearDisplay(0);  
-  timeRemaining = totalTime;
+  getRandomTotalTime();
   chooseRandomTarget();
   state = PLAYING;
 }
@@ -317,16 +312,7 @@ void explode() {
     printByte(mine3);
   }
   beep(100, 400, 0);
-}
-
-void defuse() {
-  state = INACTIVE;
-
-  attempts = 0;
-  beep(800, 60, 200, 5);
-  beep(700, 90, 300, 4);
-  beep(500, 240, 800, 2);
-  beep(400, 440, 800, 1);
+  halt();
 }
 
 void chooseRandomTarget() {
@@ -334,20 +320,6 @@ void chooseRandomTarget() {
 }
 
 void lookForTarget() {
-//  lc.clearDisplay(0);
-//  int dist = getDistance();
-//  Serial.print("Distance: ");
-//  Serial.println(dist);
-//  if (dist < 60 && (abs(previousDistanceMeasurement - dist) > 60)) {
-//    Serial.print("Target found! Remaining: ");
-//    Serial.println(randomTarget);
-//    printByte(heart2);
-//    if (randomTarget != 0) {
-//      randomTarget = randomTarget - 1;
-//    }
-//    previousDistanceMeasurement = dist;
-//  }
-
     randomTarget -= 1;
 }
 
@@ -356,26 +328,8 @@ void listenForTargetAction() {
   if (buttonPressed()) {
 
     chooseRandomTarget();
-//    chosenTarget = false;
-//    returningToStart = true;
-
-
-//    timeToReturnToStart = (currentMillis - targetStartTime);
-//    Serial.print(timeToReturnToStart);
+    extendTime();
   }
-}
-
-void initialize() {
-//    spin(2000);
-//    delay(2000);
-//    spin(1500);
-//    beep(100, 50, 50);
-//    spin(400);
-//    delay(2000);
-//    readUltrasonic();
-    
-//    animateHeart(3);
-    state = INITIATING;
 }
 
 
@@ -387,45 +341,15 @@ void initialize() {
 void loop() {
     if (state == INACTIVE) {
       printByte(questionMark);
-      if (buttonPressed()) {initialize();}
-    } 
-    else if (state == INITIATING) {
-      start();
+      if (buttonPressed()) {start();}
     }
     else if (state == PLAYING) {
-      Serial.print("time: ");
-      Serial.print(timeRemaining);
         if (timeRemaining < 1) {explode();}
         else {
-          currentMillis = millis();
           
-          
-//          if (returningToStart) 
-//          
-//          {
-//            if (forwardStepTracker > 0) {
-//              backward();
-//              forwardStepTracker -= 1;
-//            } else {
-//              returningToStart = false;
-//              forwardStepTracker = 0;
-//              chooseRandomTarget();
-//            }
-//            printByte(backwardArrow);
-//          } 
-//          else
           if (randomTarget == 0) 
-          
           {
             // rotated to and now facing the chosen target
-//            if (!chosenTarget) {
-//              chosenTarget = true;
-//              targetStartTime = millis();
-//            }
-//            if (currentMillis - targetStartTime < 3000) {
-//              forward();
-//              forwardStepTracker += 1;
-//            }
             printByte(forwardArrow);
             listenForTargetAction();
           } 
@@ -441,12 +365,6 @@ void loop() {
           
           soundTimer();
           halt();
-          
-//          if (buttonPressed()){
-//            attempts += 1;
-//            if (attempts >= requiredAttempts) {defuse();}
-//            else {extendTime();}
-//          }
         }
       }
 }
